@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Attendance Predictor</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #eef2f7;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .subjects {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .subject {
+            background: #f5f7fa;
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin-top: 7px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 17px;
+            cursor: pointer;
+        }
+
+        .result {
+            background: #f8fafc;
+            padding: 15px;
+            margin-top: 12px;
+            border-radius: 10px;
+        }
+
+        /* AI BOT */
+
+        .chatbot {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 330px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.25);
+            overflow: hidden;
+            display: none;
+            z-index: 1000;
+        }
+
+        .chat-header {
+            background: #2563eb;
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+        }
+
+        .chat-body {
+            height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+        }
+
+        .bot {
+            background: #e5e7eb;
+        }
+
+        .user {
+            background: #dbeafe;
+            text-align: right;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        .chat-input input {
+            margin: 0;
+            flex: 1;
+        }
+
+        .chat-input button {
+            width: 70px;
+            margin-left: 5px;
+            padding: 10px;
+        }
+
+        .bot-button {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: #2563eb;
+            color: white;
+            border: none;
+            font-size: 28px;
+            z-index: 999;
+        }
+
+        @media (max-width: 700px) {
+            .subjects {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="card">
+        <h1>📊 Attendance Predictor</h1>
+        <p>Smart Attendance Management Dashboard</p>
+    </div>
+
+    <div class="card">
+
+        <form method="POST">
+
+            <label><b>Select your class section</b></label>
+
+            <select name="section" required>
+                <option value="">-- Select Section --</option>
+
+                {% for file in files %}
+                <option value="{{ file.name }}"
+                    {% if selected_file == file.name %}selected{% endif %}>
+                    {{ file.name }}
+                </option>
+                {% endfor %}
+            </select>
+
+            <label><b>Today's Date</b></label>
+            <input type="date" value="{{ today }}" readonly>
+
+            <label><b>Planning Date</b></label>
+            <input type="date"
+                   name="planning_date"
+                   value="{{ planning_date }}"
+                   required>
+
+            <h2>📚 Current Attendance</h2>
+
+            <div class="subjects">
+
+                {% for i in range(1, 6) %}
+
+                <div class="subject">
+
+                    <h3>Subject {{ i }}</h3>
+
+                    <label>Current Attendance (%)</label>
+                    <input type="number"
+                           name="subject{{ i }}"
+                           min="0"
+                           max="100"
+                           step="0.1"
+                           placeholder="Example: 75">
+
+                    <label>Classes Attended</label>
+                    <input type="number"
+                           name="attended{{ i }}"
+                           min="0"
+                           placeholder="Example: 15">
+
+                    <label>Total Classes Conducted</label>
+                    <input type="number"
+                           name="total{{ i }}"
+                           min="1"
+                           placeholder="Example: 20">
+
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+            <h2>📝 OD / Medical Leave</h2>
+
+            <label>On-Duty (OD) Days</label>
+            <input type="number"
+                   name="od_days"
+                   min="0"
+                   value="{{ od_days }}">
+
+            <label>Medical Leave Days</label>
+            <input type="number"
+                   name="medical_days"
+                   min="0"
+                   value="{{ medical_days }}">
+
+            <button type="submit">
+                🔮 Calculate Attendance
+            </button>
+
+        </form>
+
+    </div>
+
+
+    {% if results %}
+
+    <div class="card">
+
+        <h2>📈 Attendance Results</h2>
+
+        {% for result in results %}
+
+        <div class="result">
+
+            <h3>{{ result.name }}</h3>
+
+            <p>
+                Current Attendance:
+                <b>{{ result.current }}%</b>
+            </p>
+
+            <p>
+                After OD / Medical Leave:
+                <b>{{ result.adjusted }}%</b>
+            </p>
+
+            <p>
+                Status:
+                <b>{{ result.status }}</b>
+            </p>
+
+            <p>
+                Classes needed for 75%:
+                <b>{{ result.required_75 }}</b>
+            </p>
+
+            <p>
+                Classes needed for 90%:
+                <b>{{ result.required_90 }}</b>
+            </p>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+    {% endif %}
+
+</div>
+
+
+<!-- AI CHATBOT -->
+
+<button class="bot-button" onclick="toggleBot()">🤖</button>
+
+<div class="chatbot" id="chatbot">
+
+    <div class="chat-header">
+        🤖 Attendance Advisor
+    </div>
+
+    <div class="chat-body" id="chatBody">
+
+        <div class="message bot">
+            Hi! I'm your Attendance Advisor.<br><br>
+            Ask me questions like:<br>
+            "Will 3 days leave affect my attendance?"
+        </div>
+
+    </div>
+
+    <div class="chat-input">
+
+        <input
+            type="text"
+            id="chatInput"
+            placeholder="Ask about attendance..."
+            onkeydown="if(event.key==='Enter') sendMessage()"
+        >
+
+        <button onclick="sendMessage()">Send</button>
+
+    </div>
+
+</div>
+
+
+<script>
+
+function toggleBot() {
+
+    const bot = document.getElementById("chatbot");
+
+    if (bot.style.display === "none" || bot.style.display === "") {
+        bot.style.display = "block";
+    } else {
+        bot.style.display = "none";
+    }
+
+}
+
+
+function sendMessage() {
+
+    const input = document.getElementById("chatInput");
+
+    const message = input.value.trim();
+
+    if (!message) {
+        return;
+    }
+
+    const chatBody = document.getElementById("chatBody");
+
+
+    // Show user message
+
+    const userMessage = document.createElement("div");
+
+    userMessage.className = "message user";
+
+    userMessage.innerText = message;
+
+    chatBody.appendChild(userMessage);
+
+
+    // Get attendance data
+
+    const attendanceInputs =
+        document.querySelectorAll(
+            'input[name^="subject"]'
+        );
+
+
+    let attendanceValues = [];
+
+    attendanceInputs.forEach(function(input) {
+
+        if (input.value !== "") {
+
+            attendanceValues.push(
+                parseFloat(input.value)
+            );
+
+        }
+
+    });
+
+
+    let reply = "";
+
+
+    if (attendanceValues.length === 0) {
+
+        reply =
+            "Please enter your subject attendance first. Then I can give personalized advice.";
+
+    }
+
+    else {
+
+        const lowest =
+            Math.min(...attendanceValues);
+
+        const average =
+            attendanceValues.reduce(
+                (a, b) => a + b, 0
+            ) / attendanceValues.length;
+
+
+        if (
+            message.toLowerCase().includes("75")
+            ||
+            message.toLowerCase().includes("leave")
+        ) {
+
+            if (lowest < 75) {
+
+                reply =
+                    "⚠️ Your lowest subject is already below 75%. Try to attend the upcoming classes regularly and check the required-class calculation above.";
+
+            }
+
+            else {
+
+                reply =
+                    "✅ Your current lowest attendance is " +
+                    lowest.toFixed(1) +
+                    "%. Based on the values entered, you are currently above 75%. Avoid unnecessary leave to maintain the buffer.";
+
+            }
+
+        }
+
+        else if (
+            message.toLowerCase().includes("90")
+        ) {
+
+            reply =
+                "🎯 Your current average attendance is " +
+                average.toFixed(1) +
+                "%. Check the 90% required-class figure for each subject above.";
+
+        }
+
+        else {
+
+            reply =
+                "📊 Your current average attendance is " +
+                average.toFixed(1) +
+                "%. Your lowest subject is " +
+                lowest.toFixed(1) +
+                "%. Check the results above for your 75% and 90% requirements.";
+
+        }
+
+    }
+
+
+    setTimeout(function() {
+
+        const botMessage =
+            document.createElement("div");
+
+        botMessage.className = "message bot";
+
+        botMessage.innerText = reply;
+
+        chatBody.appendChild(botMessage);
+
+        chatBody.scrollTop =
+            chatBody.scrollHeight;
+
+    }, 300);
+
+
+    input.value = "";
+
+}
+
+</script>
+
+</body>
+</html>
